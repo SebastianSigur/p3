@@ -48,7 +48,6 @@ void listenServer(int serverSocket)
        {
           printf("%s\n", buffer);
        }
-       printf("here\n");
     }
 }
 
@@ -82,7 +81,7 @@ int main(int argc, char* argv[])
 
    struct hostent *server;
    server = gethostbyname(argv[1]);
-
+   
    bzero((char *) &serv_addr, sizeof(serv_addr));
    serv_addr.sin_family = AF_INET;
    bcopy((char *)server->h_addr,
@@ -118,13 +117,22 @@ int main(int argc, char* argv[])
 
     // Listen and print replies from server
    std::thread serverThread(listenServer, serverSocket);
-
+   
+   size_t len;
+   std::cout << inet_ntoa((in_addr)serv_addr.sin_addr) << std::endl;
    finished = false;
    while(!finished)
    {
        bzero(buffer, sizeof(buffer));
 
        fgets(buffer, sizeof(buffer), stdin);
+       std::cout << buffer << std::endl;
+       len = strlen(buffer);
+       
+       std::cout << len<< std::endl;
+       
+       //buffer[0] = 0x01;
+       //buffer[len] = 0x04;
 
        nwrite = send(serverSocket, buffer, strlen(buffer),0);
 

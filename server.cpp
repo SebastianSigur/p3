@@ -38,12 +38,17 @@
 
 #define BACKLOG  5          // Allowed length of queue of waiting connections
 
+//
+// Globals
+//
+
+std::string GROUP = "82";
+std::string IP = "10.2.16.134";
+std::string PORT;
+
 // Simple class for handling connections from clients.
 //
 // Client(int socket) - socket to send/receive traffic from client.
-std::string GROUP = "82";
-std::string IP = "0";
-std::string PORT;
 
 class Client
 {
@@ -76,9 +81,8 @@ class Server
 class Holder
 {
     public:
-        in_addr ip;   
-        in_port_t port;
-        Holder(in_addr ip, in_port_t port) : ip{ip}, port{port} {};
+        std::string group;
+        Holder(std::string group) : group{group} {};
         ~Holder(){};
 };
 // Note: map is not necessarily the most efficient method to use here,
@@ -89,12 +93,36 @@ class Holder
 // (indexed on socket no.) sacrificing memory for speed.
 
 std::map<int, Client*> clients; // Lookup table for socketid per Client information
-std::map<int, Server*> servers; // Lookup table for socketid per Server information
+std::map<std::string, Server*> servers; // Lookup table for groupId per Server information
 std::map<int, Holder*> maps; // Lookup table mapping socket to ip
+
+std::queue<std::string> messages; // Message meant for this server, kept for client to fetch
 
 // Open socket for specified port.
 //
 // Returns -1 if unable to create the socket for any reason.
+
+void listenServer(int serverSocket)
+{
+    int nread;                                  // Bytes read from socket
+    char buffer[1025];                          // Buffer for reading input
+
+    while(true)
+    {
+       memset(buffer, 0, sizeof(buffer));
+       nread = read(serverSocket, buffer, sizeof(buffer));
+
+       if(nread == 0)                      // Server has dropped us
+       {
+          printf("Over and Out\n");
+          exit(0);
+       }
+       else if(nread > 0)
+       {
+          printf("%s\n", buffer);
+       }
+    }
+}
 
 int open_socket(int portno)
 {
@@ -184,7 +212,7 @@ void closeConnection(int Socket, fd_set *openSockets, int *maxfds)
 void fetchCommand(Server* server, int count) {
     for(int i=0;i<count;i++){
         std::string command = "FETCH_MSG," + server->group;
-        send(server->socket, command.c_str(), sizeof(command), 0);
+        send(server->socket, command.c_str(), command.length(), 0);
     }
 
 }
@@ -210,17 +238,71 @@ std::vector<std::string> fetchTokens(char *buffer){
     }
     return tokens;
 }
+
+std::vector<std::string> get_message(char *buffer, int commas){
+    //This function returns a vector of strings, last is the message and the other are the tokens
+    std::vector<std::string> tokens;
+    std::string token;
+    std::string subtoken;
+
+    std::stringstream stream(buffer);
+    
+    if (getline(stream,token))
+    {   
+        std::string del = ",";
+
+        int c = 0;
+        while(c<commas){
+            subtoken = token.substr(0, token.find(del));
+            tokens.push_back(subtoken);
+            token = token.substr(token.find(del)+1, -1);
+        }
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+std::vector<std::string> get_message(std::string token, int commas){
+    //This function returns a vector of strings, last is the message and the other are the tokens
+    std::vector<std::string> tokens;
+    std::string subtoken;
+
+ 
+
+    std::string del = ",";
+
+    int c = 0;
+    while(c<commas){
+        subtoken = token.substr(0, token.find(del));
+        tokens.push_back(subtoken);
+        token = token.substr(token.find(del)+1, -1);
+    }
+    tokens.push_back(token);
+
+    return tokens;
+}
+// Iterates over the open
+void broadcast() {
+    
+}
+
 void Command(int Socket, fd_set *openSockets, int *maxfds, 
                   char *buffer) 
 {
+
     std::vector<std::string> tokens;
+    std::vector<std::string> b;
     // Split command  into tokens for parsing
+    tokens = get_message(buffer, 1);
+    std::cout << "gotsome";
 
-    
-
-    
-    if((tokens[0].compare("JOIN")) == 0){
-        tokens = fetchTokens(buffer);
+    if(tokens.size()==0){
+        std::string msg = "SOH or EOT was not found sowwy\nMessage was not proccesed";
+        send(Socket, msg.c_str(), msg.length(), 0);
+    }
+    else if((tokens[0].compare("JOIN")) == 0){
+        b = get_message(tokens[1], 2);
+        tokens.pop_back();
+        tokens.insert(std::end(tokens), std::begin(b), std::end(b));
         std::string msg = "SERVERS," + 
         GROUP + "," + 
         IP + "," +
@@ -231,14 +313,20 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
             msg += server.second->group + "," +  server.second->ip + "," + std::to_string(server.second->port) + ";";
 
         }
-        std::cout << msg <<"|";
+        //stoi(tokens[3])
+        servers[tokens[1]] = new Server(Socket, tokens[2], 82, tokens[1]);
         send(Socket, msg.c_str(), msg.length()-1, 0);
+
     }
 
-    else if(tokens[0].compare("SERVERS")){
-        tokens = fetchTokens(buffer);
+    else if(tokens[0].compare("SERVERS") == 0){
+        b = get_message(tokens[1], 2);
+        tokens.pop_back();
+        tokens.insert(std::end(tokens), std::begin(b), std::end(b));
         int c = 0;
-        servers[Socket] = new Server(Socket, tokens[c+1], std::stoi(tokens[c+2]), tokens[c+3]);
+        maps[Socket] = new Holder(tokens[c+1]);
+        //std::stoi(tokens[c+2]
+        servers[tokens[1]] = new Server(Socket, tokens[c+1], std::stoi(tokens[c+2]), tokens[c+3]);
         //
         //more, try to connect to other servers
 
@@ -246,31 +334,74 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         
     // Fetches message from that socket 
     else if((tokens[0].compare("KEEPALIVE")) == 0){
-        tokens = fetchTokens(buffer);
-        if(tokens.size() < 2) {
-           // Error 
-           // Break ?
+        if(tokens.size() == 2) {
+            std::cout << "YOMAMA" << std::endl;
+            std::cout << tokens[1] << std::endl;
+            std::cout << "YOMAMA" << std::endl;
+            fetchCommand(servers[maps[Socket]->group], std::stoi(tokens[1]));
         }
-        // Fetch message
-        fetchCommand(servers[Socket], std::stoi(tokens[1]));
+        else{
+            //TODO Erase this in final
+            std::cout << "debug reason(KEEPALIVESIZEISNOT2)";
+        }
     }
     else if((tokens[0].compare("FETCH_MSGS")) == 0){
-        tokens = fetchTokens(buffer);
-        if(tokens.size() < 2) {
-            //Error
+        if(tokens.size() == 2) {
+            std::string groupId = tokens[1];
+
+            // Check if groupid is us
+            if(groupId == GROUP) {
+              // Pop of message queue in the respective class intance
+              std::string msg = servers[groupId]->messages.front();
+              servers[groupId]->messages.pop();
+              send(Socket, msg.c_str(), sizeof(msg), 0);
+            }
+            // Groupid is 1hop away
+            else if (servers.find(groupId) == servers.end()) {
+                //send to all servers connectedtous
+            } else {
+                //msg = get_message
+                std::string msg = "FETCH," + groupId;
+                for(auto server = servers.begin(); server != servers.end(); server++) {
+                    send(server->second->socket, msg.c_str(), sizeof(msg.c_str()), 0);
+                }
+            }
+            // Else broadcast ?
         }
-        std::string groupId = tokens[1];
-        
     }
     else if((tokens[0].compare("SEND_MSGS")) == 0){
+        b = get_message(tokens[1], 2);
+        tokens.pop_back();
+        tokens.insert(std::end(tokens), std::begin(b), std::end(b));
         if(tokens.size() < 2) {
             //Error
         }
         std::string toGroupId = tokens[1];
         std::string fromGroupId = tokens[2];
+        std::string message = tokens[3];
+        
+        // Check if the message is meant for us
+
+        if(toGroupId == GROUP)
+            messages.push(message);
+        
+        std::string msg = toGroupId + fromGroupId + message;
+
+        // Check if message is meant for someone connected in 1 hop distance
+        std::map<std::string, Server*>::iterator server;
+        if((server = servers.find(toGroupId)) != servers.end()){
+            send(server->second->socket, msg.c_str(), sizeof(msg.c_str()), 0);
+        }
+
+        // Else just broadcast it to everyone in 1 hop distance
+        for(auto server = servers.begin(); server != servers.end(); server++) {
+            send(server->second->socket, msg.c_str(), sizeof(msg.c_str()), 0);
+        }
 
     }
-    //SEND_MSG
+    else if((tokens[0].compare("STATUSREQ")) == 0){
+        
+    }
     //STATUSREQ
     //STATUSREP
     //
@@ -350,7 +481,9 @@ int main(int argc, char* argv[])
     struct sockaddr_in client;
     socklen_t clientLen;
     char buffer[1025];              // buffer for reading from clients
-
+    int nwrite;
+    std::vector<std::string> arguments;
+    std::vector<std::string> b;
     if(argc != 2)
     {
         printf("Usage: chat_server <ip port>\n");
@@ -380,15 +513,35 @@ int main(int argc, char* argv[])
     finished = false;
 
     while(!finished)
-    {
+    {      
+    
+        bzero(buffer, sizeof(buffer));
+
+        fgets(buffer, sizeof(buffer), stdin); 
+        std::cout << buffer << std::endl;
+        arguments = get_message(buffer, 1);
+        if(arguments[0].compare("CONNNECT") == 0){
+            b = get_message(arguments[1], 1);
+            arguments.pop_back();
+            arguments.insert(std::end(arguments), std::begin(b), std::end(b));
+            std::string ip = b[1];
+            std::string port = b[1];
+
+        }
         // Get modifiable copy of readSockets
         readSockets = exceptSockets = openSockets;
-        memset(buffer, 0, sizeof(buffer));
+        //memset(buffer, 0, sizeof(buffer));
 
         // Look at sockets and see which ones have something to be read()
-        int n = select(maxfds + 1, &readSockets, NULL, &exceptSockets, NULL);
+        struct timeval tv = {1, 0}; 
 
-        if(n < 0)
+        int n = select(maxfds + 1, &readSockets, NULL, &exceptSockets, &tv);
+        
+        if(n == EINTR) {
+            std::cout << "timeout" << std::endl;
+        }
+
+        else if(n < 0)
         {
             perror("select failed - closing down\n");
             finished = true;
@@ -400,8 +553,8 @@ int main(int argc, char* argv[])
             {
                clientSock = accept(listenSock, (struct sockaddr *)&client,
                                    &clientLen);
-               maps[clientSock] = new Holder(client.sin_addr, client.sin_port);
-               std::string msg = "JOIN,"+GROUP;
+
+               std::string msg = "JOIN,"+GROUP + ","+ IP + ","+ PORT;
                send(clientSock, msg.c_str(), msg.length(),0);
                // Add new client to the list of open sockets
                FD_SET(clientSock, &openSockets);
@@ -424,7 +577,7 @@ int main(int argc, char* argv[])
                for(auto const& pair : clients)
                {
                   Client *client = pair.second;
-
+                  
                   if(FD_ISSET(client->sock, &readSockets))
                   {
                       // recv() == 0 means client has closed connection
