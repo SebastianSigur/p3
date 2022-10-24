@@ -44,7 +44,7 @@
 // Globals
 //
 
-std::string GROUP = "P2_GROUP82";
+std::string GROUP = "P3_GROUP82";
 std::string IP = "130.208.243.61";
 std::string PORT;
 
