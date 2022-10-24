@@ -29,7 +29,7 @@
 #include <map>
 
 #include <time.h>
-
+#include <thread>
 #include <unistd.h>
 
 // fix SOCK_NONBLOCK for OSX
@@ -45,7 +45,7 @@
 //
 
 std::string GROUP = "82";
-std::string IP = INADDR_ANY;
+std::string IP = "10.2.16.134";
 std::string PORT;
 
 // Simple class for handling connections from clients.
