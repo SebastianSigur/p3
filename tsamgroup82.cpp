@@ -675,8 +675,9 @@ int main(int argc, char* argv[])
         if (!cmd.empty()){
             
             
+            send(sock, cmd.c_str(),cmd.length(),0);
             
-            send_message(sock, cmd);
+            //send_message(sock, cmd);
 
 
         }
