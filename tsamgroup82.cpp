@@ -758,7 +758,7 @@ int main(int argc, char* argv[])
                           
                           end = std::chrono::system_clock::now();
                           std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-                          std::cout << "AT: " << std::ctime(&end_time) << "->" <<"JOIN,P3_GROUP82,130.208.243.61,4089SERVER: " << client->sock << " sent-> " << buffer << std::endl;
+                          std::cout << "AT: " << std::ctime(&end_time) << "-> " << client->sock << " sent " << buffer << std::endl;
                           Command(client->sock, &openSockets, &maxfds, buffer);
                           memset(buffer, 0, sizeof(buffer));
                       }
