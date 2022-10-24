@@ -45,7 +45,7 @@
 //
 
 std::string GROUP = "82";
-std::string IP = "10.2.16.134";
+std::string IP = "130.208.243.61";
 std::string PORT;
 
 // Simple class for handling connections from clients.
