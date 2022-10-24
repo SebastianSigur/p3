@@ -438,7 +438,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         PORT + ";";
         for(auto const& server : servers)
         {
-            //msg += server.second->group + ";";
+            msg += server.second->group + server.second->group+ ";";
 
         }
         msg.pop_back();
@@ -728,8 +728,6 @@ int main(int argc, char* argv[])
             std::list<Client *> disconnectedClients;  
             while(n-- > 0)
             {
-               std::cout << "1" << std::endl;
-               
                for(auto const& pair : clients)
                {
                   Client *client = pair.second;
@@ -742,7 +740,7 @@ int main(int argc, char* argv[])
                           std::cout << buffer << std::endl;
                           disconnectedClients.push_back(client);
                           closeConnection(client->sock, &openSockets, &maxfds);
-
+                          memset(buffer, 0, sizeof(buffer));
                       }
                       // We don't check for -1 (nothing received) because select()
                       // only triggers if there is something on the socket for us.
@@ -750,6 +748,7 @@ int main(int argc, char* argv[])
                       {
                           std::cout << buffer << std::endl;
                           Command(client->sock, &openSockets, &maxfds, buffer);
+                          memset(buffer, 0, sizeof(buffer));
                       }
                   }
                }
