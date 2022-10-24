@@ -556,7 +556,8 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
                 }
                 else{
                     msg = messages[messages.size()-1];
-                    msg.pop_back();
+                                        msg = messages[messages.size()-1];
+.pop_back();
                 }
 
                 send_message(Socket, msg);
