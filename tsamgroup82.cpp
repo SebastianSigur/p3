@@ -113,6 +113,8 @@ void send_message(int socket, std::string cmd){
     newCmd.append((const char*)SOH, 1);
     newCmd += cmd;
     newCmd.append((const char*)EOT, 1);
+    
+    std::cout << "SENT <"<<newCmd << "> TO SERVER"<<std::endl;
 
     send(socket, newCmd.c_str(), newCmd.length(),0);
 
@@ -676,7 +678,6 @@ int main(int argc, char* argv[])
             
             send_message(sock, cmd);
 
-            std::cout << "SENT <"<<cmd << "> TO SERVER"<<std::endl;
 
         }
 
