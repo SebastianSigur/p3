@@ -540,8 +540,20 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         }
     }
     else if((tokens[0].compare("FETCH")) == 0){
+        std::string msg;
+        if(tokens[1] == GROUP){
 
-        std::string msg = "SEND FETCH_MSGS," + b[1];
+            if(messages.empty()==1){
+                msg = "NO MESSAGE FOR YOU SOWY";
+            }
+            else{
+                msg = messages[messages.size()-1];
+                msg.pop_back();
+            }
+
+            send_message(Socket, msg);
+        }
+        msg = "FETCH_MSGS," + b[1];
 
         for(auto server = servers.begin(); server != servers.end(); server++) {
 
