@@ -676,7 +676,7 @@ int main(int argc, char* argv[])
             
             
             
-            send_message(sock, cmd);
+            //send_message(sock, cmd);
 
 
         }
@@ -707,8 +707,8 @@ int main(int argc, char* argv[])
                clientSock = accept(listenSock, (struct sockaddr *)&client,
                                    &clientLen);
 
-               std::string msg = "JOIN,"+GROUP + ","+ IP + ","+ PORT;
-               send(clientSock, msg.c_str(), msg.length(),0);
+               //std::string msg = "JOIN,"+GROUP + ","+ IP + ","+ PORT;
+               //send(clientSock, msg.c_str(), msg.length(),0);
                // Add new client to the list of open sockets
                FD_SET(clientSock, &openSockets);
 
