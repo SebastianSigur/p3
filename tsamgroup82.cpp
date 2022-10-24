@@ -421,8 +421,9 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     }
     else if((tokens[0].compare("JOIN")) == 0)
     { 
-        p = getip(Socket);
-        std::cout << "ip: " <<p.first << " port: " << p.second << std::endl;
+        //p = getip(Socket);
+
+        //std::cout << "ip: " <<p.first << " port: " << p.second << std::endl;
         typedef unsigned char Byte;
         std::cout << "WENT IN JOIN" << std::endl;
         maps[Socket] = new Holder(tokens[1]);
@@ -735,7 +736,8 @@ int main(int argc, char* argv[])
                   {
                       // recv() == 0 means client has closed connection
                       if(recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
-                      { 
+                      {    
+                          std::cout << buffer << std::endl;
                           disconnectedClients.push_back(client);
                           closeConnection(client->sock, &openSockets, &maxfds);
 
