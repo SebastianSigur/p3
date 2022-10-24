@@ -645,7 +645,7 @@ int main(int argc, char* argv[])
     std::cout << "1" << std::endl;
     int sock = connect_socket(ip, port);
     FD_SET(sock, &openSockets);
-    maxfds = sock;
+   maxfds = std::max(maxfds, sock);
 
     time_t timer;
     time_t delta;
