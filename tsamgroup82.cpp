@@ -507,18 +507,19 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
 
         if(toGroupId == GROUP)
             messages.push_back(message);
-        
-        std::string msg = "SEND_MSG,"+toGroupId +","+ fromGroupId +","+ message;
-
-        // Check if message is meant for someone connected in 1 hop distance
-        std::map<std::string, Server*>::iterator server;
-        if((server = servers.find(toGroupId)) != servers.end()){
-            send_message(server->second->socket, msg);
-        }
         else{
-            // Else just broadcast it to everyone in 1 hop distance
-            for(auto server = servers.begin(); server != servers.end(); server++) {
+            std::string msg = "SEND_MSG,"+toGroupId +","+ fromGroupId +","+ message;
+
+            // Check if message is meant for someone connected in 1 hop distance
+            std::map<std::string, Server*>::iterator server;
+            if((server = servers.find(toGroupId)) != servers.end()){
                 send_message(server->second->socket, msg);
+            }
+            else{
+                // Else just broadcast it to everyone in 1 hop distance
+                for(auto server = servers.begin(); server != servers.end(); server++) {
+                    send_message(server->second->socket, msg);
+                }
             }
         }
         
