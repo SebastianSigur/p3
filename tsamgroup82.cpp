@@ -676,7 +676,7 @@ int main(int argc, char* argv[])
             
             
             
-            //send_message(sock, cmd);
+            send_message(sock, cmd);
 
 
         }
