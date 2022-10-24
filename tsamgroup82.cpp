@@ -612,9 +612,9 @@ int main(int argc, char* argv[])
     std::string group;
     std::string custom;
     int x;
-    if(argc != 2)
+    if(argc != 3)
     {
-        printf("Usage: chat_server <ip port>\n");
+        printf("Usage: chat_server <ip port> <s port>\n");
         exit(0);
     }
 
