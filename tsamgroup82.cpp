@@ -508,7 +508,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         if(toGroupId == GROUP)
             messages.push_back(message);
         
-        std::string msg = toGroupId +","+ fromGroupId +","+ message;
+        std::string msg = "SEND_MSG,"+toGroupId +","+ fromGroupId +","+ message;
 
         // Check if message is meant for someone connected in 1 hop distance
         std::map<std::string, Server*>::iterator server;
