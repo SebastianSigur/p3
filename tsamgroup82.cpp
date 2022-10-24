@@ -660,7 +660,7 @@ int main(int argc, char* argv[])
         std::thread t1([&]() {
             std::cin >> cmd;
             });
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(std::chrono::seconds(10));
         t1.detach();
 
         delta = time(NULL) - timer;
