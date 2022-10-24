@@ -44,7 +44,7 @@
 // Globals
 //
 
-std::string GROUP = "82";
+std::string GROUP = "tsamgroup82";
 std::string IP = "130.208.243.61";
 std::string PORT;
 
@@ -113,7 +113,7 @@ void send_message(int socket, std::string cmd){
     newCmd.append((const char*)SOH, 1);
     newCmd += cmd;
     newCmd.append((const char*)EOT, 1);
-    
+
     std::cout << "SENT <"<<newCmd << "> TO SERVER"<<std::endl;
 
     send(socket, newCmd.c_str(), newCmd.length(),0);
@@ -441,6 +441,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
             msg += server.second->group + "," +  server.second->ip + "," + std::to_string(server.second->port) + ";";
 
         }
+        msg.pop_back();
         send_message(Socket, msg);
 
     }
