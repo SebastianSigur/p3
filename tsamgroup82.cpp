@@ -668,8 +668,7 @@ int main(int argc, char* argv[])
             x = servers[group]->messages.size();
             custom = "KEEPALIVE,"+std::to_string(x);
 
-            //send_message(sock, custom);
-            send(sock, cmd.c_str(),cmd.length(),0);
+            send_message(sock, custom);
             time(&timer);
         }
         
@@ -677,7 +676,6 @@ int main(int argc, char* argv[])
             
             
             
-
             send_message(sock, cmd);
 
 
