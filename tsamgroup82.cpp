@@ -540,25 +540,31 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         }
     }
     else if((tokens[0].compare("FETCH")) == 0){
-        std::string msg;
-        if(tokens[1] == GROUP){
+        if(tokens.size() == 2) {
 
-            if(messages.empty()==1){
-                msg = "NO MESSAGE FOR YOU SOWY";
+            std::string msg;
+            if(tokens[1] == GROUP){
+
+                if(messages.empty()==1){
+                    msg = "NO MESSAGE FOR YOU SOWY";
+                }
+                else{
+                    msg = messages[messages.size()-1];
+                    msg.pop_back();
+                }
+
+                send_message(Socket, msg);
             }
             else{
-                msg = messages[messages.size()-1];
-                msg.pop_back();
+                msg = "FETCH_MSGS," + tokens[1];
+
+                for(auto server = servers.begin(); server != servers.end(); server++) {
+
+                    send_message(server->second->socket, msg);
+                }
             }
-
-            send_message(Socket, msg);
         }
-        msg = "FETCH_MSGS," + b[1];
-
-        for(auto server = servers.begin(); server != servers.end(); server++) {
-
-            send_message(server->second->socket, msg);
-        }
+        
     }
     else if((tokens[0].compare("QUERYSERVERS")) == 0){
         b = get_message(tokens[1], 1);
