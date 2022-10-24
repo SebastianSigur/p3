@@ -5,6 +5,8 @@
 //
 // Author: Jacky Mallett (jacky@ru.is)
 //
+#include <chrono>
+#include <ctime>    
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -590,6 +592,10 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
 
 int main(int argc, char* argv[])
 {
+    auto start = std::chrono::system_clock::now();
+    auto end = std::chrono::system_clock::now();
+
+
     bool finished;
     int listenSock;                 // Socket for connections to server
     int clientSock;                 // Socket of connecting client
@@ -746,7 +752,10 @@ int main(int argc, char* argv[])
                       // only triggers if there is something on the socket for us.
                       else
                       {
-                          std::cout << "SERVER: " << client->sock << " sent-> " << buffer << std::endl;
+                          
+                          end = std::chrono::system_clock::now();
+                          std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+                          std::cout << "AT: " << std::ctime(&end_time) << " SERVER: " << client->sock << " sent-> " << buffer << std::endl;
                           Command(client->sock, &openSockets, &maxfds, buffer);
                           memset(buffer, 0, sizeof(buffer));
                       }
