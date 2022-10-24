@@ -438,7 +438,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         PORT + ";";
         for(auto const& server : servers)
         {
-            msg += server.second->group + server.second->group+ ";";
+            msg += server.second->group + "," + server.second->ip+ "," + std::to_string(server.second->port)+";";
 
         }
         msg.pop_back();
