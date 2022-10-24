@@ -438,7 +438,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         PORT + ";";
         for(auto const& server : servers)
         {
-            msg += server.second->group + "," +  server.second->ip + "," + std::to_string(server.second->port) + ";";
+            msg += server.second->group + ";";
 
         }
         msg.pop_back();
@@ -668,7 +668,6 @@ int main(int argc, char* argv[])
             x = servers[group]->messages.size();
             custom = "KEEPALIVE,"+std::to_string(x);
 
-            std::cout << "SENT <"<< custom << "> TO SERVER"<<std::endl;
             send_message(sock, custom);
             time(&timer);
         }
