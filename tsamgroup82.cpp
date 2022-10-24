@@ -461,7 +461,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         
     // Fetches message from that socket 
     else if((tokens[0].compare("KEEPALIVE")) == 0){
-        if(tokens[1] != "0"){
+        if(tokens[1] == "0"){
 
         }
         else{
