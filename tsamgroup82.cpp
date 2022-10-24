@@ -389,6 +389,14 @@ std::string filter(char* message) {
 
     return "";
 }
+char* getip(int newfd) {
+    struct sockaddr_in addr;
+    socklen_t addr_size = sizeof(struct sockaddr_in);
+    int res = getpeername(newfd, (struct sockaddr *)&addr, &addr_size);
+    char *clientip = new char[20];
+    strcpy(clientip, inet_ntoa(addr.sin_addr));
+    return clientip;
+}
 
 void Command(int Socket, fd_set *openSockets, int *maxfds, 
                   char *buffer) 
@@ -398,7 +406,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     std::vector<std::string> b;
     // Split command  into tokens for parsing
     std::string token = filter(buffer);
-    
+    std::string x = "";
     tokens = get_message(token, 1);
     int c = tokens[0].compare("JOIN");
 
@@ -408,9 +416,11 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     }
     else if((tokens[0].compare("JOIN")) == 0)
     { 
+        x = getip(Socket);
+        std::cout << x << std::endl;
         typedef unsigned char Byte;
         std::cout << "WENT IN JOIN" << std::endl;
-       
+        maps[Socket] = new Holder(tokens[1]);
         std::string msg;
        
         msg = msg + "SERVERS," + 
@@ -623,8 +633,7 @@ int main(int argc, char* argv[])
     std::string ip = "130.208.243.61";
     std::string port = "4006";
     std::cout << "1" << std::endl;
-    int sock = connect_socket(ip, port);;
-
+    int sock = connect_socket(ip, port);
     FD_SET(sock, &openSockets);
     maxfds = sock;
 
@@ -647,7 +656,7 @@ int main(int argc, char* argv[])
         if(delta > 60) {
             group = maps[sock]->group;
             x = servers[group]->messages.size();
-            custom = "KEEPALIVE,"+x;
+            custom = "KEEPALIVE,"+std::to_string(x);
 
             std::cout << "SENT <"<< custom << "> TO SERVER"<<std::endl;
             send_message(sock, custom);
