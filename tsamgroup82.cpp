@@ -421,13 +421,13 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     }
     else if((tokens[0].compare("JOIN")) == 0)
     { 
-        //p = getip(Socket);
+        p = getip(Socket);
 
-        //std::cout << "ip: " <<p.first << " port: " << p.second << std::endl;
         typedef unsigned char Byte;
         std::cout << "WENT IN JOIN" << std::endl;
         maps[Socket] = new Holder(tokens[1]);
-       // servers[tokens[1]] = new Server();
+
+        servers[tokens[1]] = new Server(Socket, p.first, std::stoi(p.second), tokens[1]);
         std::string msg;
        
         msg = msg + "SERVERS," + 
