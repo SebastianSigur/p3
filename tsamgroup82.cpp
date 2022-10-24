@@ -663,7 +663,7 @@ int main(int argc, char* argv[])
 
         delta = time(NULL) - timer;
 
-        if(delta > 60) {
+        if(delta > 70) {
             group = maps[sock]->group;
             x = servers[group]->messages.size();
             custom = "KEEPALIVE,"+std::to_string(x);
