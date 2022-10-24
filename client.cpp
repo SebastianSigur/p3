@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
    std::thread serverThread(listenServer, serverSocket);
    
    size_t len;
-   std::cout << inet_ntoa((in_addr)serv_addr.sin_addr) << std::endl;
+   //std::cout << inet_ntoa((in_addr)serv_addr.sin_addr) << std::endl;
    finished = false;
    while(!finished)
    {

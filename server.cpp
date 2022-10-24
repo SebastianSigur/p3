@@ -28,6 +28,8 @@
 #include <thread>
 #include <map>
 
+#include <time.h>
+
 #include <unistd.h>
 
 // fix SOCK_NONBLOCK for OSX
@@ -37,13 +39,13 @@
 #endif
 
 #define BACKLOG  5          // Allowed length of queue of waiting connections
-
+#define BUFFER_SIZE  1025
 //
 // Globals
 //
 
 std::string GROUP = "82";
-std::string IP = "10.2.16.134";
+std::string IP = INADDR_ANY;
 std::string PORT;
 
 // Simple class for handling connections from clients.
@@ -102,6 +104,19 @@ std::queue<std::string> messages; // Message meant for this server, kept for cli
 //
 // Returns -1 if unable to create the socket for any reason.
 
+void send_message(int socket, std::string cmd){
+    typedef unsigned char Byte;
+    Byte SOH[1] = {0x01};
+    Byte EOT[1] = {0x04};
+    std::string newCmd;
+
+    newCmd.append((const char*)SOH, 1);
+    newCmd += cmd;
+    newCmd.append((const char*)EOT, 1);
+
+    send(socket, newCmd.c_str(), newCmd.length(),0);
+
+}
 void listenServer(int serverSocket)
 {
     int nread;                                  // Bytes read from socket
@@ -179,6 +194,72 @@ int open_socket(int portno)
    }
 }
 
+
+int connect_socket(std::string ip, std::string port)
+{
+   struct sockaddr_in sk_addr;   // address settings for bind()
+   int sock;                     // socket opened for this port
+   int set = 1;                  // for setsockopt
+
+   // Create socket for connection. Set to be non-blocking, so recv will
+   // return immediately if there isn't anything waiting to be read.
+#ifdef __APPLE__     
+   if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+   {
+      perror("Failed to open socket");
+      return(-1);
+   }
+#else
+   if((sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0)
+   {
+     perror("Failed to open socket");
+    return(-1);
+   }
+#endif
+
+   // Turn on SO_REUSEADDR to allow socket to be quickly reused after 
+   // program exit.
+
+   if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+   {
+      perror("Failed to set SO_REUSEADDR:");
+   }
+   set = 1;
+#ifdef __APPLE__     
+   if(setsockopt(sock, SOL_SOCKET, SOCK_NONBLOCK, &set, sizeof(set)) < 0)
+   {
+     perror("Failed to set SOCK_NOBBLOCK");
+   }
+#endif
+   memset(&sk_addr, 0, sizeof(sk_addr));
+
+   sk_addr.sin_family      = AF_INET;
+   sk_addr.sin_addr.s_addr = inet_addr(ip.c_str());
+   sk_addr.sin_port        = htons(std::stoi(port));
+
+   // Bind to socket to listen for connections from clients
+
+    if(connect(sock, (struct sockaddr *)&sk_addr, sizeof(sk_addr) )< 0)
+   {
+       // EINPROGRESS means that the connection is still being setup. Typically this
+       // only occurs with non-blocking sockets. (The serverSocket above is explicitly
+       // not in non-blocking mode, so this check here is just an example of how to
+       // handle this properly.)
+       if(errno != EINPROGRESS)
+       {
+         printf("Failed to open socket to server: %s\n", ip.c_str());
+         perror("Connect failed: ");
+         exit(0);
+       }
+       
+   }
+
+   else {
+    return sock;
+   }
+   return sock;
+
+}
 // Close a client's connection, remove it from the client list, and
 // tidy up select sockets afterwards.
 
@@ -244,7 +325,7 @@ std::vector<std::string> get_message(char *buffer, int commas){
     std::vector<std::string> tokens;
     std::string token;
     std::string subtoken;
-
+    
     std::stringstream stream(buffer);
     
     if (getline(stream,token))
@@ -256,6 +337,7 @@ std::vector<std::string> get_message(char *buffer, int commas){
             subtoken = token.substr(0, token.find(del));
             tokens.push_back(subtoken);
             token = token.substr(token.find(del)+1, -1);
+            c++;
         }
         tokens.push_back(token);
     }
@@ -266,15 +348,21 @@ std::vector<std::string> get_message(std::string token, int commas){
     std::vector<std::string> tokens;
     std::string subtoken;
 
+
  
 
     std::string del = ",";
 
     int c = 0;
+    
     while(c<commas){
+       
         subtoken = token.substr(0, token.find(del));
         tokens.push_back(subtoken);
-        token = token.substr(token.find(del)+1, -1);
+        token = token.substr(token.find(del)+1, token.length());
+
+        c++;
+
     }
     tokens.push_back(token);
 
@@ -285,6 +373,23 @@ void broadcast() {
     
 }
 
+std::string filter(char* message) {
+    //Checking for SOH
+    if(message[0] != 0x01) {
+        return "";
+    }
+
+    int i;
+    // If we encounter a EOT return the message in between
+    // Otherwise return an empty string
+    for(i = 1; i < BUFFER_SIZE; i++) {
+        if(message[i] == 0x04)
+            return std::string(message + 1, i - 1);
+    }
+
+    return "";
+}
+
 void Command(int Socket, fd_set *openSockets, int *maxfds, 
                   char *buffer) 
 {
@@ -292,34 +397,37 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     std::vector<std::string> tokens;
     std::vector<std::string> b;
     // Split command  into tokens for parsing
-    tokens = get_message(buffer, 1);
-    std::cout << "gotsome";
+    std::string token = filter(buffer);
+    
+    tokens = get_message(token, 1);
+    int c = tokens[0].compare("JOIN");
 
     if(tokens.size()==0){
         std::string msg = "SOH or EOT was not found sowwy\nMessage was not proccesed";
         send(Socket, msg.c_str(), msg.length(), 0);
     }
-    else if((tokens[0].compare("JOIN")) == 0){
-        b = get_message(tokens[1], 2);
-        tokens.pop_back();
-        tokens.insert(std::end(tokens), std::begin(b), std::end(b));
-        std::string msg = "SERVERS," + 
+    else if((tokens[0].compare("JOIN")) == 0)
+    { 
+        typedef unsigned char Byte;
+        std::cout << "WENT IN JOIN" << std::endl;
+       
+        std::string msg;
+       
+        msg = msg + "SERVERS," + 
         GROUP + "," + 
         IP + "," +
         PORT + ";";
-        
         for(auto const& server : servers)
         {
             msg += server.second->group + "," +  server.second->ip + "," + std::to_string(server.second->port) + ";";
 
         }
-        //stoi(tokens[3])
-        servers[tokens[1]] = new Server(Socket, tokens[2], 82, tokens[1]);
-        send(Socket, msg.c_str(), msg.length()-1, 0);
+        send_message(Socket, msg);
 
     }
 
     else if(tokens[0].compare("SERVERS") == 0){
+        std::cout << "WENT IN SERVERS" << std::endl;
         b = get_message(tokens[1], 2);
         tokens.pop_back();
         tokens.insert(std::end(tokens), std::begin(b), std::end(b));
@@ -335,9 +443,6 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     // Fetches message from that socket 
     else if((tokens[0].compare("KEEPALIVE")) == 0){
         if(tokens.size() == 2) {
-            std::cout << "YOMAMA" << std::endl;
-            std::cout << tokens[1] << std::endl;
-            std::cout << "YOMAMA" << std::endl;
             fetchCommand(servers[maps[Socket]->group], std::stoi(tokens[1]));
         }
         else{
@@ -480,10 +585,13 @@ int main(int argc, char* argv[])
     int maxfds;                     // Passed to select() as max fd in set
     struct sockaddr_in client;
     socklen_t clientLen;
-    char buffer[1025];              // buffer for reading from clients
+    char buffer[BUFFER_SIZE];              // buffer for reading from clients
     int nwrite;
     std::vector<std::string> arguments;
     std::vector<std::string> b;
+    std::string group;
+    std::string custom;
+    int x;
     if(argc != 2)
     {
         printf("Usage: chat_server <ip port>\n");
@@ -504,40 +612,68 @@ int main(int argc, char* argv[])
     }
     else 
     // Add listen socket to socket set we are monitoring
-    {
+    {   
+
         FD_ZERO(&openSockets);
         FD_SET(listenSock, &openSockets);
         maxfds = listenSock;
     }
 
     finished = false;
+    std::string ip = "130.208.243.61";
+    std::string port = "4006";
+    std::cout << "1" << std::endl;
+    int sock = connect_socket(ip, port);;
+
+    FD_SET(sock, &openSockets);
+    maxfds = sock;
+
+    time_t timer;
+    time_t delta;
+
+    time(&timer);
 
     while(!finished)
-    {      
-    
-        bzero(buffer, sizeof(buffer));
+    {     
+        std::string cmd = "";
+        std::thread t1([&]() {
+            std::cin >> cmd;
+            });
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        t1.detach();
 
-        fgets(buffer, sizeof(buffer), stdin); 
-        std::cout << buffer << std::endl;
-        arguments = get_message(buffer, 1);
-        if(arguments[0].compare("CONNNECT") == 0){
-            b = get_message(arguments[1], 1);
-            arguments.pop_back();
-            arguments.insert(std::end(arguments), std::begin(b), std::end(b));
-            std::string ip = b[1];
-            std::string port = b[1];
+        delta = time(NULL) - timer;
+
+        if(delta > 60) {
+            group = maps[sock]->group;
+            x = servers[group]->messages.size();
+            custom = "KEEPALIVE,"+x;
+
+            std::cout << "SENT <"<< custom << "> TO SERVER"<<std::endl;
+            send_message(sock, custom);
+            time(&timer);
+        }
+        
+        if (!cmd.empty()){
+            
+            
+            
+            send_message(sock, cmd);
+
+            std::cout << "SENT <"<<cmd << "> TO SERVER"<<std::endl;
 
         }
+
         // Get modifiable copy of readSockets
         readSockets = exceptSockets = openSockets;
+        clients[sock] = new Client(sock);
         //memset(buffer, 0, sizeof(buffer));
 
         // Look at sockets and see which ones have something to be read()
         struct timeval tv = {1, 0}; 
 
         int n = select(maxfds + 1, &readSockets, NULL, &exceptSockets, &tv);
-        
-        if(n == EINTR) {
+        if(errno == EINTR) {
             std::cout << "timeout" << std::endl;
         }
 
@@ -574,6 +710,8 @@ int main(int argc, char* argv[])
             std::list<Client *> disconnectedClients;  
             while(n-- > 0)
             {
+               std::cout << "1" << std::endl;
+               
                for(auto const& pair : clients)
                {
                   Client *client = pair.second;
@@ -582,7 +720,7 @@ int main(int argc, char* argv[])
                   {
                       // recv() == 0 means client has closed connection
                       if(recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
-                      {
+                      { 
                           disconnectedClients.push_back(client);
                           closeConnection(client->sock, &openSockets, &maxfds);
 
@@ -591,7 +729,7 @@ int main(int argc, char* argv[])
                       // only triggers if there is something on the socket for us.
                       else
                       {
-                          //std::cout << buffer << std::endl;
+                          std::cout << buffer << std::endl;
                           Command(client->sock, &openSockets, &maxfds, buffer);
                       }
                   }
