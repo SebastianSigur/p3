@@ -422,7 +422,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     else if((tokens[0].compare("JOIN")) == 0)
     { 
         p = getip(Socket);
-        std::cout << "ip: " <<x[0] << " port: " << x[1] << std::endl;
+        std::cout << "ip: " <<p.first << " port: " << p.second << std::endl;
         typedef unsigned char Byte;
         std::cout << "WENT IN JOIN" << std::endl;
         maps[Socket] = new Holder(tokens[1]);
