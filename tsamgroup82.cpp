@@ -389,13 +389,16 @@ std::string filter(char* message) {
 
     return "";
 }
-char* getip(int newfd) {
+std::pair<char*,char*> getip(int newfd) {
     struct sockaddr_in addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
     int res = getpeername(newfd, (struct sockaddr *)&addr, &addr_size);
     char *clientip = new char[20];
+    char *port = new char[20];
     strcpy(clientip, inet_ntoa(addr.sin_addr));
-    return clientip;
+    strcpy(port, std::to_string(addr.sin_port).c_str());
+
+    return std::make_pair(clientip, port);
 }
 
 void Command(int Socket, fd_set *openSockets, int *maxfds, 
@@ -407,6 +410,8 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     // Split command  into tokens for parsing
     std::string token = filter(buffer);
     std::string x = "";
+    std::pair<char*, char*> p;
+
     tokens = get_message(token, 1);
     int c = tokens[0].compare("JOIN");
 
@@ -416,11 +421,12 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     }
     else if((tokens[0].compare("JOIN")) == 0)
     { 
-        x = getip(Socket);
-        std::cout << x << std::endl;
+        p = getip(Socket);
+        std::cout << "ip: " <<x[0] << " port: " << x[1] << std::endl;
         typedef unsigned char Byte;
         std::cout << "WENT IN JOIN" << std::endl;
         maps[Socket] = new Holder(tokens[1]);
+       // servers[tokens[1]] = new Server();
         std::string msg;
        
         msg = msg + "SERVERS," + 
