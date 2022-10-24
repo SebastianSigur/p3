@@ -292,11 +292,9 @@ void closeConnection(int Socket, fd_set *openSockets, int *maxfds)
 }
 
 
-void fetchCommand(Server* server, int count) {
-    for(int i=0;i<count;i++){
-        std::string command = "FETCH_MSG," + server->group;
-        send(server->socket, command.c_str(), command.length(), 0);
-    }
+void fetchCommand(int socket) {
+    std::string command = "FETCH_MSG," + GROUP;
+    send_message(socket, command);
 
 }
 
@@ -463,13 +461,13 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         
     // Fetches message from that socket 
     else if((tokens[0].compare("KEEPALIVE")) == 0){
-        if(tokens.size() == 2) {
-            fetchCommand(servers[maps[Socket]->group], std::stoi(tokens[1]));
+        if(tokens[1] != "0"){
+
         }
         else{
-            //TODO Erase this in final
-            std::cout << "debug reason(KEEPALIVESIZEISNOT2)";
+            fetchCommand(Socket);
         }
+
     }
     else if((tokens[0].compare("FETCH_MSGS")) == 0){
         if(tokens.size() == 2) {
