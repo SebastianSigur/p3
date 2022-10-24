@@ -95,6 +95,7 @@ class Holder
 // (indexed on socket no.) sacrificing memory for speed.
 
 std::map<int, Client*> clients; // Lookup table for socketid per Client information
+std::map<std::string, Server*> oneHopServers;
 std::map<std::string, Server*> servers; // Lookup table for groupId per Server information
 std::map<int, Holder*> maps; // Lookup table mapping socket to ip
 
@@ -737,7 +738,7 @@ int main(int argc, char* argv[])
                       // recv() == 0 means client has closed connection
                       if(recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
                       {    
-                          std::cout << buffer << std::endl;
+                          //std::cout << buffer << std::endl;
                           disconnectedClients.push_back(client);
                           closeConnection(client->sock, &openSockets, &maxfds);
                           memset(buffer, 0, sizeof(buffer));
@@ -746,7 +747,7 @@ int main(int argc, char* argv[])
                       // only triggers if there is something on the socket for us.
                       else
                       {
-                          std::cout << buffer << std::endl;
+                          std::cout << "SERVER: " << client->sock << " sent-> " << buffer << std::endl;
                           Command(client->sock, &openSockets, &maxfds, buffer);
                           memset(buffer, 0, sizeof(buffer));
                       }
