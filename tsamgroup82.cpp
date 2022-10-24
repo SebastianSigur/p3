@@ -293,7 +293,7 @@ void closeConnection(int Socket, fd_set *openSockets, int *maxfds)
 
 
 void fetchCommand(int socket) {
-    std::string command = "FETCH_MSG," + GROUP;
+    std::string command = "FETCH_MSGS," + GROUP;
     send_message(socket, command);
 
 }
