@@ -641,7 +641,7 @@ int main(int argc, char* argv[])
 
     finished = false;
     std::string ip = "130.208.243.61";
-    std::string port = "4006";
+    std::string port = argv[2];
     std::cout << "1" << std::endl;
     int sock = connect_socket(ip, port);
     FD_SET(sock, &openSockets);
