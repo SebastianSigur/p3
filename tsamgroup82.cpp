@@ -5,6 +5,8 @@
 //
 // Author: Jacky Mallett (jacky@ru.is)
 //
+#include <chrono>
+#include <ctime>    
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -109,12 +111,15 @@ void send_message(int socket, std::string cmd){
     Byte SOH[1] = {0x01};
     Byte EOT[1] = {0x04};
     std::string newCmd;
+    auto start = std::chrono::system_clock::now();
+    auto end = std::chrono::system_clock::now();
 
     newCmd.append((const char*)SOH, 1);
     newCmd += cmd;
     newCmd.append((const char*)EOT, 1);
 
-    std::cout << "SENT <"<<newCmd << "> TO SERVER"<<std::endl;
+    std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+    std::cout <<"AT: " << std::ctime(&end_time) << "->SENT <"<<newCmd << "> TO SERVER"<<std::endl;
 
     send(socket, newCmd.c_str(), newCmd.length(),0);
 
@@ -590,6 +595,10 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
 
 int main(int argc, char* argv[])
 {
+    auto start = std::chrono::system_clock::now();
+    auto end = std::chrono::system_clock::now();
+
+
     bool finished;
     int listenSock;                 // Socket for connections to server
     int clientSock;                 // Socket of connecting client
@@ -746,7 +755,10 @@ int main(int argc, char* argv[])
                       // only triggers if there is something on the socket for us.
                       else
                       {
-                          std::cout << "SERVER: " << client->sock << " sent-> " << buffer << std::endl;
+                          
+                          end = std::chrono::system_clock::now();
+                          std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+                          std::cout << "AT: " << std::ctime(&end_time) << "JOIN,P3_GROUP82,130.208.243.61,4089SERVER: " << client->sock << " sent-> " << buffer << std::endl;
                           Command(client->sock, &openSockets, &maxfds, buffer);
                           memset(buffer, 0, sizeof(buffer));
                       }
