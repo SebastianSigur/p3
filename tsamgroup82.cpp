@@ -70,8 +70,7 @@ class Server
     std::string ip;
     int port;
     std::string group;      // GroupID
-    std::queue<std::string> messages;
-
+    std::vector<std::string> messages;
     Server(int socket, std::string ip, int port, std::string group) : 
         socket{socket},
         ip{ip},
@@ -99,7 +98,7 @@ std::map<std::string, Server*> oneHopServers;
 std::map<std::string, Server*> servers; // Lookup table for groupId per Server information
 std::map<int, Holder*> maps; // Lookup table mapping socket to ip
 
-std::queue<std::string> messages; // Message meant for this server, kept for client to fetch
+std::vector<std::string> messages; // Message meant for this server, kept for client to fetch
 
 // Open socket for specified port.
 //
@@ -476,123 +475,99 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         if(tokens.size() == 2) {
             std::string groupId = tokens[1];
 
-            // Check if groupid is us
-            if(groupId == GROUP) {
-              // Pop of message queue in the respective class intance
-              std::string msg = servers[groupId]->messages.front();
-              servers[groupId]->messages.pop();
-              send(Socket, msg.c_str(), sizeof(msg), 0);
-            }
             // Groupid is 1hop away
-            else if (servers.find(groupId) == servers.end()) {
-                //send to all servers connectedtous
-            } else {
-                //msg = get_message
-                std::string msg = "FETCH," + groupId;
+            if (servers.find(groupId) != servers.end()) {
+                if(servers[groupId]->messages.size() != 0){
+                    std::string msg = servers[groupId]->messages[servers[groupId]->messages.size()-1];
+                    servers[groupId]->messages.pop_back();
+                    send_message(servers[groupId]->socket, msg);
+                }
+                else{
+                    std::string msg = "FETCH_MSGS," + groupId;
+                    for(auto server = servers.begin(); server != servers.end(); server++) {
+                        send_message(server->second->socket, msg);
+                    }
+                }
+                
+            }
+            else{
+                std::string msg = "FETCH_MSGS," + groupId;
                 for(auto server = servers.begin(); server != servers.end(); server++) {
-                    send(server->second->socket, msg.c_str(), sizeof(msg.c_str()), 0);
+                    send_message(server->second->socket, msg);
                 }
             }
-            // Else broadcast ?
         }
     }
     else if((tokens[0].compare("SEND_MSGS")) == 0){
         b = get_message(tokens[1], 2);
-        tokens.pop_back();
-        tokens.insert(std::end(tokens), std::begin(b), std::end(b));
-        if(tokens.size() < 2) {
-            //Error
-        }
-        std::string toGroupId = tokens[1];
-        std::string fromGroupId = tokens[2];
-        std::string message = tokens[3];
+
+        std::string toGroupId = b[0];
+        std::string fromGroupId = b[1];
+        std::string message = b[2];
         
         // Check if the message is meant for us
 
         if(toGroupId == GROUP)
-            messages.push(message);
+            messages.push_back(message);
         
-        std::string msg = toGroupId + fromGroupId + message;
+        std::string msg = toGroupId +","+ fromGroupId +","+ message;
 
         // Check if message is meant for someone connected in 1 hop distance
         std::map<std::string, Server*>::iterator server;
         if((server = servers.find(toGroupId)) != servers.end()){
-            send(server->second->socket, msg.c_str(), sizeof(msg.c_str()), 0);
+            send_message(server->second->socket, msg);
         }
-
-        // Else just broadcast it to everyone in 1 hop distance
-        for(auto server = servers.begin(); server != servers.end(); server++) {
-            send(server->second->socket, msg.c_str(), sizeof(msg.c_str()), 0);
-        }
-
-    }
-    else if((tokens[0].compare("STATUSREQ")) == 0){
-        
-    }
-    //STATUSREQ
-    //STATUSREP
-    //
-    else if((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2))
-    {
-        clients[Socket]->name = tokens[1];
-    }
-    else if(tokens[0].compare("LEAVE") == 0)
-    {
-        // Close the socket, and leave the socket handling
-        // code to deal with tidying up clients etc. when
-        // select() detects the OS has torn down the connection.
-
-        closeConnection(Socket, openSockets, maxfds);
-    }
-    else if(tokens[0].compare("WHO") == 0)
-    {
-        std::cout << "Who is logged on" << std::endl;
-        std::string msg;
-
-        for(auto const& names : clients)
-        {
-            msg += names.second->name + ",";
-
-        }
-        // Reducing the msg length by 1 loses the excess "," - which
-        // granted is totally cheating.
-        send(Socket, msg.c_str(), msg.length()-1, 0);
-
-    }
-    // This is slightly fragile, since it's relying on the order
-    // of evaluation of the if statement.
-    else if((tokens[0].compare("MSG") == 0) && (tokens[1].compare("ALL") == 0))
-    {
-        std::string msg;
-        for(auto i = tokens.begin()+2;i != tokens.end();i++) 
-        {
-            msg += *i + " ";
-        }
-
-        for(auto const& pair : clients)
-        {
-            send(pair.second->sock, msg.c_str(), msg.length(),0);
-        }
-    }
-    else if(tokens[0].compare("MSG") == 0)
-    {
-        for(auto const& pair : clients)
-        {
-            if(pair.second->name.compare(tokens[1]) == 0)
-            {
-                std::string msg;
-                for(auto i = tokens.begin()+2;i != tokens.end();i++) 
-                {
-                    msg += *i + " ";
-                }
-                send(pair.second->sock, msg.c_str(), msg.length(),0);
+        else{
+            // Else just broadcast it to everyone in 1 hop distance
+            for(auto server = servers.begin(); server != servers.end(); server++) {
+                send_message(server->second->socket, msg);
             }
         }
+        
+
+    }
+    //STATUSREP
+    //
+    // This is slightly fragile, since it's relying on the order
+    // of evaluation of the if statement.
+    else if((tokens[0].compare("SEND")) == 0){
+        b = get_message(tokens[1], 1);
+
+
+        std::string msg = "SEND MSG," + b[0]+","+GROUP + "," + b[1];
+
+        for(auto server = servers.begin(); server != servers.end(); server++) {
+
+            send_message(server->second->socket, msg);
+        }
+    }
+    else if((tokens[0].compare("FETCH")) == 0){
+
+        std::string msg = "SEND FETCH_MSGS," + b[1];
+
+        for(auto server = servers.begin(); server != servers.end(); server++) {
+
+            send_message(server->second->socket, msg);
+        }
+    }
+    else if((tokens[0].compare("QUERYSERVERS")) == 0){
+        b = get_message(tokens[1], 1);
+
+
+        std::string msg = "";
+
+        for(auto server = servers.begin(); server != servers.end(); server++) {
+
+            msg += server->second->group + ",";
+        }
+        msg.pop_back();
+        send_message(Socket, msg);
     }
     else
     {
         std::cout << "Unknown command from client:" << buffer << std::endl;
     }
+    
      
 }
 
@@ -742,6 +717,12 @@ int main(int argc, char* argv[])
                           //std::cout << buffer << std::endl;
                           disconnectedClients.push_back(client);
                           closeConnection(client->sock, &openSockets, &maxfds);
+                          if(maps.find(client->sock) == maps.end()){
+                            if (servers.find(maps[client->sock]->group) == servers.end()){
+                                servers.erase(maps[client->sock]->group);
+                            }
+                            maps.erase(client->sock);
+                          }
                           memset(buffer, 0, sizeof(buffer));
                       }
                       // We don't check for -1 (nothing received) because select()
