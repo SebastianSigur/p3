@@ -496,7 +496,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
             }
         }
     }
-    else if((tokens[0].compare("SEND_MSGS")) == 0){
+    else if((tokens[0].compare("SEND_MSG")) == 0){
         b = get_message(tokens[1], 2);
 
         std::string toGroupId = b[0];
@@ -532,7 +532,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         b = get_message(tokens[1], 1);
 
 
-        std::string msg = "SEND_MSGS," + b[0]+","+GROUP + "," + b[1];
+        std::string msg = "SEND_MSG," + b[0]+","+GROUP + "," + b[1];
 
         for(auto server = servers.begin(); server != servers.end(); server++) {
 
