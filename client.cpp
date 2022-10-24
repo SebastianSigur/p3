@@ -28,7 +28,22 @@
 #include <map>
 
 // Threaded function for handling responss from server
+int send_message(int socket, std::string cmd){
+    typedef unsigned char Byte;
+    Byte SOH[1] = {0x01};
+    Byte EOT[1] = {0x04};
+    std::string newCmd;
 
+    newCmd.append((const char*)SOH, 1);
+    newCmd += cmd;
+    newCmd.append((const char*)EOT, 1);
+
+    std::cout << "SENT <"<<newCmd << "> TO SERVER"<<std::endl;
+
+    send(socket, newCmd.c_str(), newCmd.length(),0);
+    return socket;
+
+}
 void listenServer(int serverSocket)
 {
     int nread;                                  // Bytes read from socket
@@ -121,20 +136,17 @@ int main(int argc, char* argv[])
    size_t len;
    //std::cout << inet_ntoa((in_addr)serv_addr.sin_addr) << std::endl;
    finished = false;
+   std::string cmd = "";
    while(!finished)
    {
-       bzero(buffer, sizeof(buffer));
+       std::cin >> cmd;
 
-       fgets(buffer, sizeof(buffer), stdin);
-       std::cout << buffer << std::endl;
-       len = strlen(buffer);
-       
-       std::cout << len<< std::endl;
-       
+
        //buffer[0] = 0x01;
        //buffer[len] = 0x04;
+       
+       nwrite = send_message(serverSocket, cmd);
 
-       nwrite = send(serverSocket, buffer, strlen(buffer),0);
 
        if(nwrite  == -1)
        {

@@ -534,7 +534,7 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
         b = get_message(tokens[1], 1);
 
 
-        std::string msg = "SEND MSG," + b[0]+","+GROUP + "," + b[1];
+        std::string msg = "SEND_MSGS," + b[0]+","+GROUP + "," + b[1];
 
         for(auto server = servers.begin(); server != servers.end(); server++) {
 
