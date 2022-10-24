@@ -450,12 +450,13 @@ void Command(int Socket, fd_set *openSockets, int *maxfds,
     else if(tokens[0].compare("SERVERS") == 0){
         std::cout << "WENT IN SERVERS" << std::endl;
         b = get_message(tokens[1], 2);
-        tokens.pop_back();
-        tokens.insert(std::end(tokens), std::begin(b), std::end(b));
+        servers[b[0]]->ip = b[1];
+        servers[b[0]]->port = std::stoi(b[2]);
+
         int c = 0;
-        maps[Socket] = new Holder(tokens[c+1]);
+        //maps[Socket] = new Holder(tokens[c+1]);
         //std::stoi(tokens[c+2]
-        servers[tokens[1]] = new Server(Socket, tokens[c+1], std::stoi(tokens[c+2]), tokens[c+3]);
+        //servers[tokens[1]] = new Server(Socket, tokens[c+1], std::stoi(tokens[c+2]), tokens[c+3]);
         //
         //more, try to connect to other servers
 
